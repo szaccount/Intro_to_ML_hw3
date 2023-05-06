@@ -8,6 +8,7 @@ import numpy.random
 from sklearn.datasets import fetch_openml
 import sklearn.preprocessing
 import matplotlib.pyplot as plt
+import scipy
 
 """
 Please use the provided function signature for the SGD implementation.
@@ -62,14 +63,45 @@ def SGD_hinge(data, labels, C, eta_0, T):
     return w
 
 
-
-
 def SGD_log(data, labels, eta_0, T):
     """
     Implements SGD for log loss.
+    Runs T stochastic gradient updates and returns the resulting w_T.
     """
-    # TODO: Implement me
-    pass
+    sample_size = len(data)
+    data_dimension = len(data[0])
+    w = np.array([0] * data_dimension)
+    for t in range(1, T + 1):
+        i = np.random.randint(0, sample_size)
+        step = eta_0 / t
+        xi = data[i]
+        yi = labels[i]
+        power = -yi*np.inner(w, xi)
+        w = w + step*(1 - scipy.special.expit(power))*yi*xi
+    
+    return w
+
+def SGD_log_with_measure_norm(data, labels, eta_0, T):
+    """
+    Implements SGD for log loss.
+    Runs T stochastic gradient updates and measures the norm of w each iteration.
+    Returns the resulting w_T and the norms.
+    """
+    sample_size = len(data)
+    data_dimension = len(data[0])
+    w = np.array([0] * data_dimension)
+    norms = []
+    for t in range(1, T + 1):
+        i = np.random.randint(0, sample_size)
+        step = eta_0 / t
+        xi = data[i]
+        yi = labels[i]
+        power = -yi*np.inner(w, xi)
+        w = w + step*(1 - scipy.special.expit(power))*yi*xi
+        norms.append(np.linalg.norm(w, ord=2))
+    
+    return w, norms
+    
 
 #################################
 
@@ -93,7 +125,7 @@ def accuracy_check(w_classifier, validation_data, validation_labels):
     empirical_error = error_sum / len(validation_data)
     return 1 - empirical_error
 
-def question_1a(train_data, train_labels, T, C, num_runs, eta_options):
+def question_1a_helper(train_data, train_labels, T, C, num_runs, eta_options):
     """
     Returns best eta0, accuracies for the passed eta0 options on training of passed data
     """
@@ -115,7 +147,7 @@ def question_1a(train_data, train_labels, T, C, num_runs, eta_options):
 
     return best_eta0, eta_accuracies
 
-def question_1b(train_data, train_labels, T, eta0, num_runs, C_options):
+def question_1b_helper(train_data, train_labels, T, eta0, num_runs, C_options):
     """
     Returns best C, accuracies for the passed C options on training of passed data
     """
@@ -137,6 +169,28 @@ def question_1b(train_data, train_labels, T, eta0, num_runs, C_options):
     
     return best_C, C_accuracies
 
+def question_2a_helper(train_data, train_labels, T, num_runs, eta_options):
+    """
+    Returns best eta0, accuracies for the passed eta0 options on training of passed data
+    """
+    eta_accuracies = []
+    best_eta0 = -1
+    best_eta0_accuracy = 0
+    for eta0 in eta_options:
+        sum_accuracy = 0
+        for run in range(num_runs):
+            train_res = SGD_log(train_data, train_labels, eta0, T)
+            sum_accuracy += accuracy_check(train_res, validation_data, validation_labels)
+        avg_accuracy_for_eta = sum_accuracy / num_runs
+        eta_accuracies.append(avg_accuracy_for_eta)
+        if avg_accuracy_for_eta > best_eta0_accuracy:
+            best_eta0 = eta0
+            best_eta0_accuracy = avg_accuracy_for_eta
+    
+    print(f"{best_eta0=} with accuracy {best_eta0_accuracy}")
+
+    return best_eta0, eta_accuracies
+
 
 #################################
 
@@ -147,66 +201,108 @@ if __name__ == '__main__':
     # print(train_labels[:10])
     train_data, train_labels, validation_data, validation_labels, test_data, test_labels = helper()
     
-    # question 1a finding optimal eta0
+    # # question 1a finding optimal eta0
+    # T = 1000
+    # C = 1
+    # num_runs = 10
+    # eta_options = np.logspace(-5, 5, 11)
+    # _, eta_accuracies = question_1a_helper(train_data, train_labels, T, C, num_runs, eta_options)
+    # plt.figure(1)
+    # plt.title("Average accuracy on validation set as function of eta_0")
+    # plt.xlabel("eta_0")
+    # plt.xscale("log")
+    # plt.ylabel("Average accuracy")
+    # plt.plot(eta_options, eta_accuracies)
+
+    # eta_options = np.logspace(-1, 1, 11)
+    # best_eta0, eta_accuracies = question_1a_helper(train_data, train_labels, T, C, num_runs, eta_options)
+    # plt.figure(2)
+    # plt.title("Average accuracy on validation set as function of eta_0 increased resolution 1")
+    # plt.xlabel("eta_0")
+    # plt.xscale("log")
+    # plt.ylabel("Average accuracy")
+    # plt.plot(eta_options, eta_accuracies)
+
+
+    # # question 1b finding optimal C
+    # C_options = np.logspace(-5, 5, 11)
+    # _, C_accuracies = question_1b_helper(train_data, train_labels, T, best_eta0, num_runs, C_options)
+    # plt.figure(3)
+    # plt.title("Average accuracy on validation set as function of C")
+    # plt.xlabel("C")
+    # plt.xscale("log")
+    # plt.ylabel("Average accuracy")
+    # plt.plot(C_options, C_accuracies)
+
+    # C_options = np.logspace(-5, -3, 11)
+    # best_C, C_accuracies = question_1b_helper(train_data, train_labels, T, best_eta0, num_runs, C_options)
+    # plt.figure(4)
+    # plt.title("Average accuracy on validation set as function of C increased resolution")
+    # plt.xlabel("C")
+    # plt.xscale("log")
+    # plt.ylabel("Average accuracy")
+    # plt.plot(C_options, C_accuracies)
+
+    # # question 1c
+    # T = 20000
+    # train_res = SGD_hinge(train_data, train_labels, best_C, best_eta0, T)
+    # plt.figure(5)
+    # plt.title("Resulting w as an image")
+    # plt.imshow(np.reshape(train_res, (28, 28)), interpolation="nearest")
+    # # training w on train and validate data
+    # # train_extended_data = train_data[:]
+    # # train_extended_data.extend(validation_data[:])
+    # # train_extended_labels = train_labels[:]
+    # # train_extended_labels.extend(validation_labels[:])
+    # # train_res_extended = SGD_hinge(train_extended_data, train_extended_labels, best_C, best_eta0, T)
+    # # plt.figure(6)
+    # # plt.title("Resulting w as an image on extended train data")
+    # # plt.imshow(np.reshape(train_res_extended, (28, 28)), interpolation="nearest")
+
+    # # question 1d
+    # accuracy = accuracy_check(train_res, test_data, test_labels)
+    # print(f"Accuracy of the best classifier on the test set is: {accuracy}")
+
+    print("!!! QUESTION 2 !!!")
+    # question 2a
     T = 1000
-    C = 1
     num_runs = 10
-    eta_options = np.logspace(-5, 5, 11)
-    _, eta_accuracies = question_1a(train_data, train_labels, T, C, num_runs, eta_options)
-    plt.figure(1)
+    eta_options = np.logspace(-6, 5, 13)
+    _, eta_accuracies = question_2a_helper(train_data, train_labels, T, num_runs, eta_options)
+    plt.figure(7)
     plt.title("Average accuracy on validation set as function of eta_0")
     plt.xlabel("eta_0")
     plt.xscale("log")
     plt.ylabel("Average accuracy")
     plt.plot(eta_options, eta_accuracies)
 
-    eta_options = np.logspace(-1, 1, 11)
-    best_eta0, eta_accuracies = question_1a(train_data, train_labels, T, C, num_runs, eta_options)
-    plt.figure(2)
+    eta_options = np.logspace(-6, -4, 11)
+    best_eta0, eta_accuracies = question_2a_helper(train_data, train_labels, T, num_runs, eta_options)
+    plt.figure(8)
     plt.title("Average accuracy on validation set as function of eta_0 increased resolution 1")
     plt.xlabel("eta_0")
     plt.xscale("log")
     plt.ylabel("Average accuracy")
     plt.plot(eta_options, eta_accuracies)
 
-
-    # question 1b finding optimal C
-    C_options = np.logspace(-5, 5, 11)
-    _, C_accuracies = question_1b(train_data, train_labels, T, best_eta0, num_runs, C_options)
-    plt.figure(3)
-    plt.title("Average accuracy on validation set as function of C")
-    plt.xlabel("C")
-    plt.xscale("log")
-    plt.ylabel("Average accuracy")
-    plt.plot(C_options, C_accuracies)
-
-    C_options = np.logspace(-5, -3, 11)
-    best_C, C_accuracies = question_1b(train_data, train_labels, T, best_eta0, num_runs, C_options)
-    plt.figure(4)
-    plt.title("Average accuracy on validation set as function of C increased resolution")
-    plt.xlabel("C")
-    plt.xscale("log")
-    plt.ylabel("Average accuracy")
-    plt.plot(C_options, C_accuracies)
-
-    # question 1c
+    # question 2b
     T = 20000
-    train_res = SGD_hinge(train_data, train_labels, best_C, best_eta0, T)
-    plt.figure(5)
+    train_res = SGD_log(train_data, train_labels, best_eta0, T)
+    plt.figure(9)
     plt.title("Resulting w as an image")
     plt.imshow(np.reshape(train_res, (28, 28)), interpolation="nearest")
-    # training w on train and validate data
-    # train_extended_data = train_data[:]
-    # train_extended_data.extend(validation_data[:])
-    # train_extended_labels = train_labels[:]
-    # train_extended_labels.extend(validation_labels[:])
-    # train_res_extended = SGD_hinge(train_extended_data, train_extended_labels, best_C, best_eta0, T)
-    # plt.figure(6)
-    # plt.title("Resulting w as an image on extended train data")
-    # plt.imshow(np.reshape(train_res_extended, (28, 28)), interpolation="nearest")
 
-    # # question 1d
-    # accuracy = accuracy_check(train_res, test_data, test_labels)
-    # print(f"Accuracy of the best classifier on the test set is: {accuracy}")
+    accuracy = accuracy_check(train_res, test_data, test_labels)
+    print(f"Accuracy of the best classifier on the test set is: {accuracy}")
+
+    # question 2c
+    T = 20000
+    wT, w_norms = SGD_log_with_measure_norm(train_data, train_labels, best_eta0, T)
+    Ts = [t for t in range(1, T+1)]
+    plt.figure(10)
+    plt.title("Norm of w as a function of the iteration")
+    plt.xlabel("Iteration")
+    plt.ylabel("Norm of w")
+    plt.plot(Ts, w_norms)
 
     plt.show()
