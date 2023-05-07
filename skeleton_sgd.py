@@ -80,27 +80,6 @@ def SGD_log(data, labels, eta_0, T):
         w = w + step*(1 - scipy.special.expit(power))*yi*xi
     
     return w
-
-def SGD_log_with_measure_norm(data, labels, eta_0, T):
-    """
-    Implements SGD for log loss.
-    Runs T stochastic gradient updates and measures the norm of w each iteration.
-    Returns the resulting w_T and the norms.
-    """
-    sample_size = len(data)
-    data_dimension = len(data[0])
-    w = np.array([0] * data_dimension)
-    norms = []
-    for t in range(1, T + 1):
-        i = np.random.randint(0, sample_size)
-        step = eta_0 / t
-        xi = data[i]
-        yi = labels[i]
-        power = -yi*np.inner(w, xi)
-        w = w + step*(1 - scipy.special.expit(power))*yi*xi
-        norms.append(np.linalg.norm(w, ord=2))
-    
-    return w, norms
     
 
 #################################
@@ -190,6 +169,27 @@ def question_2a_helper(train_data, train_labels, T, num_runs, eta_options):
     print(f"{best_eta0=} with accuracy {best_eta0_accuracy}")
 
     return best_eta0, eta_accuracies
+
+def SGD_log_with_measure_norm(data, labels, eta_0, T):
+    """
+    Implements SGD for log loss.
+    Runs T stochastic gradient updates and measures the norm of w each iteration.
+    Returns the resulting w_T and the norms.
+    """
+    sample_size = len(data)
+    data_dimension = len(data[0])
+    w = np.array([0] * data_dimension)
+    norms = []
+    for t in range(1, T + 1):
+        i = np.random.randint(0, sample_size)
+        step = eta_0 / t
+        xi = data[i]
+        yi = labels[i]
+        power = -yi*np.inner(w, xi)
+        w = w + step*(1 - scipy.special.expit(power))*yi*xi
+        norms.append(np.linalg.norm(w, ord=2))
+    
+    return w, norms
 
 
 #################################
